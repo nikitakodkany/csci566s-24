@@ -22,6 +22,7 @@ stop_words = set(stopwords.words('english'))
 stop_words_list = list(stop_words)
 # Add subreddit-specific stopwords if necessary
 # stop_words_list.extend(['elon', 'musk', 'tesla', 'spacex'])
+stop_words_list.extend(['removed', 'elon', 'people', 'like', 'would', 'musk'])
 
 # Instantiate a CountVectorizer, using the list of stopwords
 vectorizer = CountVectorizer(stop_words=stop_words_list)
