@@ -1,35 +1,31 @@
 import json
 import csv
-from tqdm import tqdm
 
-# Define the path to the JSON file and the CSV file
-json_file = '/Users/kevinsherla/AAAA/USC/CSCI DEEEEEEEEP L/STEP 1/elonmusk_comments'
-csv_file = 'reddit_data.csv'
+# The path to your input text file
+input_file_path = '/Users/kevinsherla/AAAA/USC/CSCI DEEEEEEEEP L/STEP 1/elonmusk_comments'
 
-# Open the JSON file for reading and the CSV file for writing
-with open(json_file, 'r') as f, open(csv_file, 'w', newline='', encoding='utf-8') as csvfile:
-    # Define fieldnames for the CSV file
-    fieldnames = ['body', 'subreddit', 'ups', 'downs', 'score', 'author', 'controversiality', 'created_utc']
-    
-    # Create a CSV writer object
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore')
-    
-    # Write header to the CSV file
-    writer.writeheader()
-    
-    # Initialize tqdm to display progress bar
-    progress_bar = tqdm(f, desc="Processing JSON", unit=" lines")
-    
-    # Read each line from the JSON file and write individual data points to the CSV file
-    for line in progress_bar:
-        # Load JSON from the line
-        json_data = json.loads(line)
+# The path to your output CSV file
+output_file_path = 'reddit_data_comments.csv'
+
+# Define the headers for the CSV file based on the features you want to extract
+headers = ['author', 'body', 'created_utc', 'subreddit', 'ups', 'downs', 'score', 'controversiality']
+
+with open(input_file_path, 'r') as infile, open(output_file_path, 'w', newline='') as outfile:
+    csv_writer = csv.writer(outfile)
+    csv_writer.writerow(headers)  # Write the headers to the CSV file
+
+    for line in infile:
+        # Parse the JSON object from each line of the file
+        data = json.loads(line)
         
-        # Write each data point to the CSV file
-        for key in fieldnames:
-            if key == 'body':
-                # Enclose the body field in double quotes
-                csvfile.write('"' + str(json_data.get(key, '')).replace('"', '""') + '", ')
-            else:
-                csvfile.write(str(json_data.get(key, '')) + ', ')
-        csvfile.write('\n')
+        # Clean up the 'body' field to remove newline characters and other potential issues
+        if 'body' in data:
+            data['body'] = data['body'].replace('\n', ' ').replace('\r', ' ')
+        
+        # Extract the data you're interested in
+        row = [data.get(header, '') for header in headers]
+        
+        # Write the extracted data to the CSV file
+        csv_writer.writerow(row)
+
+print("Data extraction and CSV file creation completed successfully.")
