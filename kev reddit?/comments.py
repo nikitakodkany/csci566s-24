@@ -8,7 +8,7 @@ input_file_path = '/Users/kevinsherla/AAAA/USC/CSCI DEEEEEEEEP L/STEP 1/elonmusk
 output_file_path = 'reddit_data_comments.csv'
 
 # Define the headers for the CSV file based on the features you want to extract
-headers = ['author', 'body', 'created_utc', 'subreddit', 'ups', 'downs', 'score', 'controversiality']
+headers = ['parent_id', 'author', 'body', 'created_utc', 'subreddit', 'ups', 'downs', 'score', 'controversiality']
 
 with open(input_file_path, 'r') as infile, open(output_file_path, 'w', newline='') as outfile:
     csv_writer = csv.writer(outfile)

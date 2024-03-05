@@ -3,7 +3,7 @@ import csv
 from tqdm import tqdm
 
 # Define the path to the JSON file and the CSV file
-json_file = 'elonmusk_submissions'
+json_file = '/Users/kevinsherla/AAAA/USC/CSCI DEEEEEEEEP L/STEP 1/elonmusk_submissions'
 csv_file = 'reddit_data_submissions.csv'
 
 # Get the total number of lines in the JSON file for progress tracking
@@ -12,7 +12,7 @@ total_lines = sum(1 for line in open(json_file))
 # Open the JSON file for reading and the CSV file for writing
 with open(json_file, 'r') as f, open(csv_file, 'w', newline='', encoding='utf-8') as csvfile:
     # Define fieldnames for the CSV file
-    fieldnames = ['title', 'url', 'score', 'ups', 'downs', 'num_comments', 'author', 'created_utc', 'subreddit']
+    fieldnames = ['id', 'title', 'url', 'score', 'ups', 'downs', 'num_comments', 'author', 'created_utc', 'subreddit']
     
     # Create a CSV writer object
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore')
