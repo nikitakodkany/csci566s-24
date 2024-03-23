@@ -24,12 +24,12 @@
 - **Tweet embedding (t-1)**: Text content of the previous tweet. [[1024, 1D]]
 - **Tweet embedding (t)**: Text content of the current tweet. [[1024, 1D]]
 - **Tweet sentiment (t)** : [[X , X, X]]
-- - **Tweet sentiment (t-1)** : [[X , X, X]]
+- **Tweet sentiment (t-1)** : [[X , X, X]]
 - **Reddit embedding (t-1)**: Text content from Reddit related to the previous tweet.
 - **Sector (t)**: [[20]]
-- - **Sector (t-1)**: [[20]]
-- ⚠️**#Likes (t-1)**: Number of likes for the prev tweet. TO EXTRACT // NORMALIZE
-- ⚠️**#Retweets (t-1)**: Number of retweets for the prev tweet. TO EXTRACT // NORMALIZE
-- ⚠️**#Comments (t-1)**: Number of comments for the prev tweet. TO EXTRACT // NORMALIZE
-- ⚠️**Timestamp (t-1)**: Timestamp of the previous tweet. TO EXTRACT 
-- ⚠️**Timestamp (t)**: Timestamp of the current tweet. TO EXTRACT
+-  **Sector (t-1)**: [[20]]
+- ⚠️ **#Likes (t-1)**: Number of likes for the prev tweet. TO EXTRACT // NORMALIZE
+- ⚠️ **#Retweets (t-1)**: Number of retweets for the prev tweet. TO EXTRACT // NORMALIZE
+- ⚠️ **#Comments (t-1)**: Number of comments for the prev tweet. TO EXTRACT // NORMALIZE
+- ⚠️ **Timestamp (t-1)**: Timestamp of the previous tweet. TO EXTRACT 
+- ⚠️ **Timestamp (t)**: Timestamp of the current tweet. TO EXTRACT
