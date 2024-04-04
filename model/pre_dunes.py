@@ -28,8 +28,19 @@ class PreDUNES(nn.Module):
         self.reddit_sentiment_model = reddit_sentiment_model
         self.twitter_sector_tokenizer = twitter_sector_tokenizer
         self.twitter_sector_model = twitter_sector_model
+        self.feature_size = {
+            'twitter_embedding': twitter_embedding_model.get_sentence_embedding_dimension(),
+            'twitter_sentiment': twitter_sentiment_model.config.num_labels,
+            'reddit_sentiment': reddit_sentiment_model.config.num_labels,
+            'twitter_sector': twitter_sector_model.config.num_labels
+        }
+        self.mappings = {
+            'twitter_sentiment': twitter_sentiment_model.config.id2label,
+            'reddit_sentiment': reddit_sentiment_model.config.id2label,
+            'twitter_sector': twitter_sector_model.config.id2label
+        }
 
-    def forward(self, prev_tweet, curr_tweet, prev_reddit):
+    def forward(self, prev_tweet, prev_reddit):
         '''
         Forward pass for the DUNES model.
         Args:
@@ -43,13 +54,10 @@ class PreDUNES(nn.Module):
         '''
         # Get the embeddings
         prev_tweet_embedding = self.twitter_embedding_model.encode([prev_tweet])
-        curr_tweet_embedding = self.twitter_embedding_model.encode([curr_tweet])
 
         # Get the sentiment
         prev_tweet_tokens = self.twitter_sentiment_tokenizer(prev_tweet, return_tensors='pt')
         prev_tweet_sentiment = self.twitter_sentiment_model(**prev_tweet_tokens)[0][0].detach().numpy()
-        curr_tweet_tokens = self.twitter_sentiment_tokenizer(curr_tweet, return_tensors='pt')
-        curr_tweet_sentiment = self.twitter_sentiment_model(**curr_tweet_tokens)[0][0].detach().numpy()
 
         prev_reddit_tokens = self.reddit_sentiment_tokenizer(prev_reddit, return_tensors='pt')
         prev_reddit_sentiment = self.reddit_sentiment_model(**prev_reddit_tokens)[0][0].detach().numpy()
@@ -57,9 +65,6 @@ class PreDUNES(nn.Module):
         # Get the sector
         prev_sector_tokens = self.twitter_sector_tokenizer(prev_tweet, return_tensors='pt')
         prev_tweet_sector = self.twitter_sector_model(**prev_sector_tokens)[0][0].detach().numpy()
-        curr_sector_tokens = self.twitter_sector_tokenizer(curr_tweet, return_tensors='pt')
-        curr_tweet_sector = self.twitter_sector_model(**curr_sector_tokens)[0][0].detach().numpy()
 
 
-        return prev_tweet_embedding, curr_tweet_embedding, prev_tweet_sentiment, curr_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector, curr_tweet_sector
-        
+        return prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector

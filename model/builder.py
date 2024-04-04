@@ -41,7 +41,7 @@ def create_preprocessing_model(
     reddit_sentiment_model.requires_grad_(False)
     twitter_sector_model.eval()
     twitter_sector_model.requires_grad_(False)
-    
+
     # Create the DUNES model
     model = PreDUNES(
         twitter_embedding_model, 
@@ -55,10 +55,8 @@ def create_preprocessing_model(
 
     return model
 
-def printClassMappings(model, predictions):
+def printClassMappings(class_mapping, predictions):
     predictions = softmax(predictions)
-    class_mapping = AutoModel.from_pretrained(model).config.id2label
-
     ranking = np.argsort(predictions)
     ranking = ranking[::-1]
     for i in range(predictions.shape[0]):
@@ -70,24 +68,22 @@ def test():
     preprocessing_model = create_preprocessing_model(
         "mixedbread-ai/mxbai-embed-large-v1",
         "cardiffnlp/twitter-roberta-base-sentiment-latest",
-        "SamLowe/roberta-base-go_emotions",
+        "bhadresh-savani/distilbert-base-uncased-emotion",
         "cardiffnlp/tweet-topic-latest-multi"
     )
 
-    prev_tweet_embedding, curr_tweet_embedding, prev_tweet_sentiment, curr_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector, curr_tweet_sector = preprocessing_model(
+    feature_size = preprocessing_model.feature_size
+    print("feature_size:", feature_size)
+
+    prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector = preprocessing_model(
         "@WholeMarsBlog Headline is misleading. Starlink can obviously offer far more robust positioning than GPS, as it will have ~1000X more satellites over time. Not all will have line of sight to users, but still &gt;10X GPS &amp; far stronger signal. Just not today’s problem.",
-        "@spideycyp_155 @BillyM2k If Russia faced calamitous defeat in conventional warfare for something as strategically critical as Crimea, the probability of using nuclear weapons is high",
         "We know who controls the media. The same corporations who have wreaked havoc on the globe for decades, if not centuries, the big banks who financed them, and the governments who turned a blind eye to the destruction. The same entities who have brought us to the precipice of destruction - quite possibly condemning us, and our progeny to an unlivable climate They have tried to stop you at every turn, and yet you persist for the good of humanity. We love you, Elon! Keep up the good work! As you have said, we must never let the light of human consciousness fade - never!"
     )
 
     print("prev_tweet_embedding:", prev_tweet_embedding)
-    print("curr_tweet_embedding:", curr_tweet_embedding)
-    print("prev_tweet_sentiment:", prev_tweet_sentiment)
-    print("curr_tweet_sentiment:", curr_tweet_sentiment)
+    print("prev_tweet_sentiment:", softmax(prev_tweet_sentiment))
 
     print("prev_reddit_sentiment:")
-    printClassMappings("SamLowe/roberta-base-go_emotions", prev_reddit_sentiment)
+    printClassMappings(preprocessing_model.mappings['reddit_sentiment'], prev_reddit_sentiment)
     print("prev_tweet_sector:")
-    printClassMappings("cardiffnlp/tweet-topic-latest-multi", prev_tweet_sector)
-    print("curr_tweet_sector:")
-    printClassMappings("cardiffnlp/tweet-topic-latest-multi", curr_tweet_sector)
+    printClassMappings(preprocessing_model.mappings['twitter_sector'], prev_tweet_sector)
