@@ -3,6 +3,7 @@ import os
 import datetime
 from pathlib import Path
 from tqdm import tqdm
+import wandb
 
 import torch
 from torch import nn
@@ -72,6 +73,11 @@ def parse_args():
     parser.add_argument('--d_model', type=int, default=1024, help='Size of the model [default: 1024]')
     parser.add_argument('--dim_feedforward', type=int, default=2048, help='Size of the feedforward network [default: 2048]')
     parser.add_argument('--num_outputs', type=int, default=3, help='Number of outputs [default: 3]')    
+
+    parser.add_argument("--report_to_wandb", default=False, action="store_true")
+    parser.add_argument("--wandb_project", type=str)
+    parser.add_argument("--wandb_entity", type=str)
+    parser.add_argument( "--save_checkpoints_to_wandb", default=False, action="store_true", help="save checkpoints to wandb")
     
     return parser.parse_args()
 
@@ -153,6 +159,15 @@ def train_model(args, checkpoints_dir, output_dir):
         avg_train_loss = train_loss / len(dataloader)
         print(f'Epoch {epoch+1}/{num_epochs}\t Train Loss: {avg_train_loss:.4f}')
 
+        if args.report_to_wandb: 
+            wandb.log({
+                "lr": optimizer.param_groups[0]["lr"], 
+                "loss": loss,
+                "epoch": epoch,
+                "train_loss": avg_train_loss,
+                },commit=True
+            )
+
         if epoch%10 == 0:
             model.eval()
             val_loss = 0.0
@@ -171,9 +186,28 @@ def train_model(args, checkpoints_dir, output_dir):
             print(f'\t\t Val Loss: {avg_val_loss:.4f}')
             save_path = Path.joinpath(checkpoints_dir, f'weights_{epoch}.pt')
             torch.save(model.state_dict(), save_path)
+            if args.report_to_wandb and args.save_checkpoints_to_wandb:
+                wandb.save(f"{args.run_name}/weights_{epoch}.pt")
+            if args.report_to_wandb:
+                wandb.log({
+                    "val_loss": avg_val_loss,
+                    "epoch": epoch,
+                    },commit=True
+                )
+    
+    if args.report_to_wandb and args.save_checkpoints_to_wandb:
+        wandb.save(f"{args.run_name}/checkpoint_{args.epoch}.pt")
 
 def main():
     args = parse_args()
+
+    if args.report_to_wandb:
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=args.run_name,
+            config=vars(args),
+        )
 
     if not os.path.exists(args.run_name):
         os.makedirs(args.run_name)
@@ -202,5 +236,5 @@ if __name__ == '__main__':
 
 '''
 test command
-python train.py --model transformer --run_name train-model --batch_size 2 --epoch 32 --learning_rate 0.001 --device None --optimizer Adam --log_dir None --output_dir output --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 16 --stride 4 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3
+python train.py --model transformer --run_name train-model --batch_size 2 --epoch 32 --learning_rate 0.001 --device cpu --optimizer Adam --log_dir None --output_dir output --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 16 --stride 4 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
 '''
