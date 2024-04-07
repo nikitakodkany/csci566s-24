@@ -187,7 +187,7 @@ def train_model(args, checkpoints_dir, output_dir):
             save_path = Path.joinpath(checkpoints_dir, f'weights_{epoch}.pt')
             torch.save(model.state_dict(), save_path)
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
-                wandb.save(f"{args.run_name}/weights_{epoch}.pt")
+                wandb.save(save_path)
             if args.report_to_wandb:
                 wandb.log({
                     "val_loss": avg_val_loss,
