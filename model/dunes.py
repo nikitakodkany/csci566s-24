@@ -1,7 +1,45 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset
 import math
 
+class DataLoaderDUNES(Dataset):
+    def __init__(self, data, preprocessing_model):
+        self.data = data
+        self.preprocessing_model = preprocessing_model
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        item = self.data[idx]
+        prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector = self.preprocessing_model(
+            item['prev_tweet'], item['prev_reddit']
+        )
+
+        prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector = self.preprocessing_model(
+            item['prev_tweet'], item['prev_reddit']
+        )
+
+        def to_tensor(obj):
+            if not isinstance(obj, torch.Tensor):
+                obj = torch.tensor(obj, dtype=torch.float)
+            return obj
+
+        prev_tweet_embedding = to_tensor(prev_tweet_embedding)
+        prev_tweet_sentiment = to_tensor(prev_tweet_sentiment)
+        prev_reddit_sentiment = to_tensor(prev_reddit_sentiment)
+        prev_tweet_sector = to_tensor(prev_tweet_sector)
+
+        return {
+            'prev_tweet_embedding': prev_tweet_embedding.squeeze(),
+            'prev_tweet_sentiment': prev_tweet_sentiment,
+            'prev_reddit_sentiment': prev_reddit_sentiment,
+            'prev_tweet_sector': prev_tweet_sector,
+            'likes': torch.tensor(item['likes'], dtype=torch.float),
+            'retweets': torch.tensor(item['retweets'], dtype=torch.float),
+            'comments': torch.tensor(item['comments'], dtype=torch.float)
+        }
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout=0.1, max_len=5000):
