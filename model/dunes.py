@@ -4,42 +4,62 @@ from torch.utils.data import Dataset
 import math
 
 class DataLoaderDUNES(Dataset):
-    def __init__(self, data, preprocessing_model):
+    def __init__(self, data, preprocessing_model, seq_len=5, stride=1):
         self.data = data
         self.preprocessing_model = preprocessing_model
+        self.seq_len = seq_len
+        self.stride = stride
+        self.numeric_features = 6
+        self.vector_size = sum(preprocessing_model.feature_size.values())+self.numeric_features
     
     def __len__(self):
-        return len(self.data)
+        return max(0, ((len(self.data) - self.seq_len) // self.stride) + 1)
     
     def __getitem__(self, idx):
-        item = self.data[idx]
-        prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector = self.preprocessing_model(
-            item['prev_tweet'], item['prev_reddit']
-        )
+        seq_features = torch.zeros((self.seq_len, self.vector_size))
+        start_idx = idx * self.stride
 
-        prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector = self.preprocessing_model(
-            item['prev_tweet'], item['prev_reddit']
-        )
+        for i in range(self.seq_len):
+            data_idx = start_idx + i
+            if data_idx < len(self.data):
+                item = self.data[data_idx]
+                if i == self.seq_len - 1:  # Masking for nth tweet
+                    prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment,positive_reddit_sentiment,negative_reddit_sentiment, prev_tweet_sector= self.preprocessing_model(item['tweet_content'], " "," "," ")
+                    # Ensure prev_tweet_embedding is flattened to match dimensions
+                    prev_tweet_embedding = prev_tweet_embedding.reshape(-1)
+                    prev_tweet_embedding=torch.tensor(prev_tweet_embedding)
+                    
+                    prev_tweet_sentiment = prev_tweet_sentiment.reshape(-1)
+                    prev_tweet_sentiment=torch.tensor(prev_tweet_sentiment) 
+                    # Create a mask tensor with the appropriate length
+                    mask_tensor = torch.zeros(self.vector_size - prev_tweet_embedding.size(0) - prev_tweet_sentiment.size(0))
+                    all_features = torch.cat([prev_tweet_embedding, prev_tweet_sentiment, mask_tensor])
+                else:
+                    prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment,positive_reddit_sentiment,negative_reddit_sentiment, prev_tweet_sector = self.preprocessing_model(item['tweet_content'], item['title_submission'],item['positive_comments'],item['negative_comments'])
+                    # Flatten and concatenate all features
+                    prev_tweet_embedding = prev_tweet_embedding.reshape(-1)
+                    prev_tweet_embedding=torch.tensor(prev_tweet_embedding)
+                    
+                    prev_tweet_sentiment = prev_tweet_sentiment.reshape(-1)
+                    prev_tweet_sentiment=torch.tensor(prev_tweet_sentiment)
+                    
+                    prev_reddit_sentiment = torch.tensor(prev_reddit_sentiment)
+                    prev_reddit_sentiment = prev_reddit_sentiment.reshape(-1)
+                    
+                    positive_reddit_sentiment = torch.tensor(positive_reddit_sentiment)
+                    positive_reddit_sentiment = positive_reddit_sentiment.reshape(-1)
+                    
+                    negative_reddit_sentiment = torch.tensor(negative_reddit_sentiment)
+                    negative_reddit_sentiment = negative_reddit_sentiment.reshape(-1)
+                    
+                    prev_tweet_sector = prev_tweet_sector.reshape(-1)
+                    prev_tweet_sector=torch.tensor(prev_tweet_sector)
+                    additional_data = torch.tensor([item['score_submission'], item['positive_scores'], item['negative_scores'], item['num_likes'], item['num_retweets'], item['num_replies']], dtype=torch.float).view(-1)
+                    all_features = torch.cat([prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, positive_reddit_sentiment, negative_reddit_sentiment, prev_tweet_sector, additional_data])
+                
+                seq_features[i, :all_features.size(0)] = all_features
 
-        def to_tensor(obj):
-            if not isinstance(obj, torch.Tensor):
-                obj = torch.tensor(obj, dtype=torch.float)
-            return obj
-
-        prev_tweet_embedding = to_tensor(prev_tweet_embedding)
-        prev_tweet_sentiment = to_tensor(prev_tweet_sentiment)
-        prev_reddit_sentiment = to_tensor(prev_reddit_sentiment)
-        prev_tweet_sector = to_tensor(prev_tweet_sector)
-
-        return {
-            'prev_tweet_embedding': prev_tweet_embedding.squeeze(),
-            'prev_tweet_sentiment': prev_tweet_sentiment,
-            'prev_reddit_sentiment': prev_reddit_sentiment,
-            'prev_tweet_sector': prev_tweet_sector,
-            'likes': torch.tensor(item['likes'], dtype=torch.float),
-            'retweets': torch.tensor(item['retweets'], dtype=torch.float),
-            'comments': torch.tensor(item['comments'], dtype=torch.float)
-        }
+        return seq_features.unsqueeze(0)
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout=0.1, max_len=5000):

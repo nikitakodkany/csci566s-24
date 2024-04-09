@@ -3,12 +3,14 @@ import os
 import datetime
 from pathlib import Path
 from tqdm import tqdm
+import pandas as pd
 import wandb
 
 import torch
 from torch import nn
 from torch.optim import Adam
 
+from utils import reformat_dataset
 from model.builder import create_preprocessing_model
 from model.dunes import DataLoaderDUNES, DunesTransformerModel
 from torch.utils.data import DataLoader
@@ -96,7 +98,9 @@ def train_model(args, checkpoints_dir, output_dir):
     )
 
     print("\nLoading Data")
-    dataset = DataLoaderDUNES(data, preprocessing_model)
+    df = pd.read_csv('dataset/elon_twitter_data.csv')
+    data = reformat_dataset(df)
+    dataset = DataLoaderDUNES(data, preprocessing_model, seq_len=args.seq_len, stride=args.stride)
     print("Data Loaded")
     print("Data Length:", len(dataset))
     print("Batch Size:", args.batch_size)
@@ -143,14 +147,7 @@ def train_model(args, checkpoints_dir, output_dir):
         train_loss = 0.0
         for batch in tqdm(dataloader, desc='Batches', leave=False):
             optimizer.zero_grad()
-            features = {
-                'prev_tweet_embedding': batch['prev_tweet_embedding'],
-                'prev_tweet_sentiment': batch['prev_tweet_sentiment'],
-                'prev_reddit_sentiment': batch['prev_reddit_sentiment'],
-                'prev_tweet_sector': batch['prev_tweet_sector'],
-            }
-            targets = torch.stack((batch['likes'], batch['retweets'], batch['comments']), dim=1)
-            outputs = model(features)
+            outputs = model(batch)
             loss = criterion(outputs, targets)
             train_loss += loss.item()
             loss.backward()
@@ -236,5 +233,5 @@ if __name__ == '__main__':
 
 '''
 test command
-python train.py --model transformer --run_name train-model --batch_size 2 --epoch 32 --learning_rate 0.001 --device cpu --optimizer Adam --log_dir None --output_dir output --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 16 --stride 4 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
+python train.py --model transformer --run_name train-model --batch_size 2 --epoch 32 --learning_rate 0.001 --device cpu --optimizer Adam --log_dir None --output_dir output --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 10 --stride 2 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
 '''
