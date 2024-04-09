@@ -7,7 +7,7 @@ import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer
 
-from .pre_dunes import PreDUNES
+from pre_dunes import PreDUNES
 
 def create_preprocessing_model(
         twitter_embedding: str,
@@ -65,6 +65,7 @@ def printClassMappings(class_mapping, predictions):
         print(f"{i+1}) {l} {np.round(float(s), 4)}")
 
 def test():
+    print("TEST START")
     preprocessing_model = create_preprocessing_model(
         "mixedbread-ai/mxbai-embed-large-v1",
         "cardiffnlp/twitter-roberta-base-sentiment-latest",
@@ -75,15 +76,24 @@ def test():
     feature_size = preprocessing_model.feature_size
     print("feature_size:", feature_size)
 
-    prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector = preprocessing_model(
+    tweet_embedding, tweet_sentiment, reddit_body_sentiment, positive_comment_sentiment, negative_comment_sentiment, prev_tweet_sector = preprocessing_model(
+        "@WholeMarsBlog Headline is misleading. Starlink can obviously offer far more robust positioning than GPS, as it will have ~1000X more satellites over time. Not all will have line of sight to users, but still &gt;10X GPS &amp; far stronger signal. Just not today’s problem.",
+        "@WholeMarsBlog Headline is misleading. Starlink can obviously offer far more robust positioning than GPS, as it will have ~1000X more satellites over time. Not all will have line of sight to users, but still &gt;10X GPS &amp; far stronger signal. Just not today’s problem.",
         "@WholeMarsBlog Headline is misleading. Starlink can obviously offer far more robust positioning than GPS, as it will have ~1000X more satellites over time. Not all will have line of sight to users, but still &gt;10X GPS &amp; far stronger signal. Just not today’s problem.",
         "We know who controls the media. The same corporations who have wreaked havoc on the globe for decades, if not centuries, the big banks who financed them, and the governments who turned a blind eye to the destruction. The same entities who have brought us to the precipice of destruction - quite possibly condemning us, and our progeny to an unlivable climate They have tried to stop you at every turn, and yet you persist for the good of humanity. We love you, Elon! Keep up the good work! As you have said, we must never let the light of human consciousness fade - never!"
     )
 
-    print("prev_tweet_embedding:", prev_tweet_embedding)
-    print("prev_tweet_sentiment:", softmax(prev_tweet_sentiment))
+    print("tweet_embedding:", tweet_embedding)
+    print("tweet_sentiment:", softmax(tweet_sentiment))
 
-    print("prev_reddit_sentiment:")
-    printClassMappings(preprocessing_model.mappings['reddit_sentiment'], prev_reddit_sentiment)
+    print("reddit_sentiment:")
+    printClassMappings(preprocessing_model.mappings['reddit_sentiment'], reddit_body_sentiment)
+    print("positive_comment_sentiment:")
+    printClassMappings(preprocessing_model.mappings['reddit_sentiment'], positive_comment_sentiment)
+    print("negative_comment_sentiment:")
+    printClassMappings(preprocessing_model.mappings['reddit_sentiment'], negative_comment_sentiment)
     print("prev_tweet_sector:")
     printClassMappings(preprocessing_model.mappings['twitter_sector'], prev_tweet_sector)
+    
+if __name__ == '__main__':
+    test()

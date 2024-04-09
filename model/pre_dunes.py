@@ -31,7 +31,7 @@ class PreDUNES(nn.Module):
         self.feature_size = {
             'twitter_embedding': twitter_embedding_model.get_sentence_embedding_dimension(),
             'twitter_sentiment': twitter_sentiment_model.config.num_labels,
-            'reddit_sentiment': reddit_sentiment_model.config.num_labels,
+            'reddit_sentiment': reddit_sentiment_model.config.num_labels*3,
             'twitter_sector': twitter_sector_model.config.num_labels
         }
         self.mappings = {
@@ -40,31 +40,37 @@ class PreDUNES(nn.Module):
             'twitter_sector': twitter_sector_model.config.id2label
         }
 
-    def forward(self, prev_tweet, prev_reddit):
+    def forward(self, tweet, reddit_body, positive_comments, negative_comments):
         '''
         Forward pass for the DUNES model.
         Args:
-            prev_tweet: previous tweet
+            tweet: previous tweet
             curr_tweet: current tweet
-            prev_reddit: previous Reddit post
+            reddit_body: previous Reddit post
             curr_reddit: current Reddit post
         Returns:
             sentiment: sentiment of the current tweet
             sector: sector of the current tweet
         '''
         # Get the embeddings
-        prev_tweet_embedding = self.twitter_embedding_model.encode([prev_tweet])
+        tweet_embedding = self.twitter_embedding_model.encode([tweet])
 
         # Get the sentiment
-        prev_tweet_tokens = self.twitter_sentiment_tokenizer(prev_tweet, return_tensors='pt')
-        prev_tweet_sentiment = self.twitter_sentiment_model(**prev_tweet_tokens)[0][0].detach().numpy()
+        tweet_tokens = self.twitter_sentiment_tokenizer(tweet, return_tensors='pt')
+        tweet_sentiment = self.twitter_sentiment_model(**tweet_tokens)[0][0].detach().numpy()
 
-        prev_reddit_tokens = self.reddit_sentiment_tokenizer(prev_reddit, return_tensors='pt')
-        prev_reddit_sentiment = self.reddit_sentiment_model(**prev_reddit_tokens)[0][0].detach().numpy()
+        reddit_body_tokens = self.reddit_sentiment_tokenizer(reddit_body, return_tensors='pt')
+        reddit_body_sentiment = self.reddit_sentiment_model(**reddit_body_tokens)[0][0].detach().numpy()
+        
+        positive_comments_tokens = self.reddit_sentiment_tokenizer(positive_comments, return_tensors='pt')
+        positive_comments_sentiment = self.reddit_sentiment_model(**positive_comments_tokens)[0][0].detach().numpy()
+        
+        negative_comments_tokens = self.reddit_sentiment_tokenizer(negative_comments, return_tensors='pt')
+        negative_comments_sentiment = self.reddit_sentiment_model(**negative_comments_tokens)[0][0].detach().numpy()
 
         # Get the sector
-        prev_sector_tokens = self.twitter_sector_tokenizer(prev_tweet, return_tensors='pt')
-        prev_tweet_sector = self.twitter_sector_model(**prev_sector_tokens)[0][0].detach().numpy()
+        prev_sector_tokens = self.twitter_sector_tokenizer(tweet, return_tensors='pt')
+        tweet_sector = self.twitter_sector_model(**prev_sector_tokens)[0][0].detach().numpy()
 
 
-        return prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, prev_tweet_sector
+        return tweet_embedding, tweet_sentiment, reddit_body_sentiment, positive_comments_sentiment, negative_comments_sentiment, tweet_sector
