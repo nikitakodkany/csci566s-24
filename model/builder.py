@@ -7,7 +7,7 @@ import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer
 
-from pre_dunes import PreDUNES
+from .pre_dunes import PreDUNES
 
 def create_preprocessing_model(
         twitter_embedding: str,
