@@ -63,6 +63,8 @@ def parse_args():
     parser.add_argument('--learning_rate', default=0.001, type=float, help='Initial learning rate [default: 0.001]')
     parser.add_argument('--device', type=str, default=None, help='GPU to use [default: none]')
     parser.add_argument('--optimizer', type=str, default='Adam', help='Adam or SGD [default: Adam]')
+    parser.add_argument('--lr_step_size', type=int, default=1, help='Step size for learning rate scheduler [default: 1]')
+    parser.add_argument('--lr_gamma', type=float, default=0.1, help='Gamma for learning rate scheduler [default: 0.1]')
     parser.add_argument('--log_dir', type=str, default=None, help='Log path [default: None]')
     parser.add_argument('--output_dir', type=str, default='output', help='Log path [default: None]')
     parser.add_argument('--data_path', type=str, default='dataset/elon_reddit_data.csv', help='Path to data file [default: dataset/elon_reddit_data.csv]')
@@ -114,7 +116,7 @@ def train_model(args, checkpoints_dir, output_dir):
     print("Batch Size:", args.batch_size)
     print("Sequence Length:", args.seq_len)
     print("Stride:", args.stride)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
     val_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
     print("\nInitializing DunesTransformerModel")
@@ -142,6 +144,7 @@ def train_model(args, checkpoints_dir, output_dir):
 
     criterion = nn.MSELoss()
     optimizer = Adam(model.parameters(), lr=args.learning_rate)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
     num_epochs = args.epoch
 
     for epoch in range(num_epochs):
@@ -193,7 +196,8 @@ def train_model(args, checkpoints_dir, output_dir):
                     "epoch": epoch,
                     },commit=True
                 )
-    
+        scheduler.step()
+        
     print("Training Complete")
 
     model.eval()
