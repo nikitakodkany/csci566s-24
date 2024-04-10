@@ -65,6 +65,7 @@ def parse_args():
     parser.add_argument('--optimizer', type=str, default='Adam', help='Adam or SGD [default: Adam]')
     parser.add_argument('--log_dir', type=str, default=None, help='Log path [default: None]')
     parser.add_argument('--output_dir', type=str, default='output', help='Log path [default: None]')
+    parser.add_argument('--data_path', type=str, default='dataset/elon_reddit_data.csv', help='Path to data file [default: dataset/elon_reddit_data.csv]')
 
     parser.add_argument('--tweet_embedding', type=str, default='mixedbread-ai/mxbai-embed-large-v1', help='Tweet embedding model')
     parser.add_argument('--tweet_sentiment', type=str, default='cardiffnlp/twitter-roberta-base-sentiment-latest', help='Tweet sentiment model')
@@ -103,7 +104,7 @@ def train_model(args, checkpoints_dir, output_dir):
     )
 
     print("\nLoading Data")
-    df = pd.read_csv('dataset/elon_twitter_data.csv')    
+    df = pd.read_csv(args.data_path)
     df[['num_likes', 'num_retweets', 'num_replies']] = scaler.fit_transform(df[['num_likes', 'num_retweets', 'num_replies']])
     
     data = reformat_dataset(df)
