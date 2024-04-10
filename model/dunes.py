@@ -56,6 +56,7 @@ class DataLoaderDUNES(Dataset):
                     prev_tweet_sector = prev_tweet_sector.reshape(-1)
                     prev_tweet_sector=torch.tensor(prev_tweet_sector)
                     additional_data = torch.tensor([item['score_submission'], item['positive_scores'], item['negative_scores'], item['num_likes'], item['num_retweets'], item['num_replies']], dtype=torch.float).view(-1)
+                    additional_data[torch.isnan(additional_data)] = 0
                     all_features = torch.cat([prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment, positive_reddit_sentiment, negative_reddit_sentiment, prev_tweet_sector, additional_data])
                 
                 seq_features[i, :all_features.size(0)] = all_features

@@ -14,6 +14,10 @@ from utils import reformat_dataset
 from model.builder import create_preprocessing_model
 from model.dunes import DataLoaderDUNES, DunesTransformerModel
 from torch.utils.data import DataLoader
+from sklearn.preprocessing import RobustScaler
+
+# create a scaler object
+scaler = RobustScaler()
 
 data = [
     {
@@ -98,7 +102,9 @@ def train_model(args, checkpoints_dir, output_dir):
     )
 
     print("\nLoading Data")
-    df = pd.read_csv('dataset/elon_twitter_data.csv')
+    df = pd.read_csv('dataset/elon_twitter_data.csv')    
+    df[['num_likes', 'num_retweets', 'num_replies']] = scaler.fit_transform(df[['num_likes', 'num_retweets', 'num_replies']])
+    
     data = reformat_dataset(df)
     dataset = DataLoaderDUNES(data, preprocessing_model, seq_len=args.seq_len, stride=args.stride)
     print("Data Loaded")
@@ -164,21 +170,17 @@ def train_model(args, checkpoints_dir, output_dir):
         if epoch%10 == 0:
             model.eval()
             val_loss = 0.0
-            for val_batch in val_dataloader:
-                features = {
-                    'prev_tweet_embedding': val_batch['prev_tweet_embedding'],
-                    'prev_tweet_sentiment': val_batch['prev_tweet_sentiment'],
-                    'prev_reddit_sentiment': val_batch['prev_reddit_sentiment'],
-                    'prev_tweet_sector': val_batch['prev_tweet_sector'],
-                }
-                targets = torch.stack((val_batch['likes'], val_batch['retweets'], val_batch['comments']), dim=1)
-                outputs = model(features)
-                loss = criterion(outputs, targets)
+            for val_batch, val_target in val_dataloader:
+                val_batch = val_batch.permute(1, 0, 2)
+                val_output = model(val_batch)
+                loss = criterion(val_output, val_target)
                 val_loss += loss.item()
             avg_val_loss = val_loss / len(val_dataloader)
             print(f'\t\t Val Loss: {avg_val_loss:.4f}')
+            
             save_path = Path.joinpath(checkpoints_dir, f'weights_{epoch}.pt')
             torch.save(model.state_dict(), save_path)
+            
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(save_path)
             if args.report_to_wandb:
@@ -188,8 +190,14 @@ def train_model(args, checkpoints_dir, output_dir):
                     },commit=True
                 )
     
+    print("Training Complete")
+
+    model.eval()
+    save_path = Path.joinpath(output_dir, 'final_model.pt')
+    torch.save(model.state_dict(), save_path)
+    print(f"Model saved to {save_path}")
     if args.report_to_wandb and args.save_checkpoints_to_wandb:
-        wandb.save(f"{args.run_name}/checkpoint_{args.epoch}.pt")
+        wandb.save(save_path)
 
 def main():
     args = parse_args()
