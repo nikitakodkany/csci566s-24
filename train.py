@@ -98,7 +98,8 @@ def train_model(args, checkpoints_dir, output_dir):
         args.tweet_embedding,
         args.tweet_sentiment,
         args.reddit_sentiment,
-        args.tweet_sector
+        args.tweet_sector,
+        args.device
     )
 
     print("\nLoading Data")
@@ -131,7 +132,7 @@ def train_model(args, checkpoints_dir, output_dir):
         num_encoder_layers=args.num_layers,  # Number of layers in the transformer encoder
         dim_feedforward=args.dim_feedforward,  # Size of the feedforward network model in transformer encoder
         num_outputs=args.num_outputs  # Number of output values (e.g., predicting engagement metrics)
-    )
+    ).to(args.device)
 
     print("\nTraining Model")
     print("Epochs:", args.epoch)
@@ -148,6 +149,8 @@ def train_model(args, checkpoints_dir, output_dir):
         train_loss = 0.0
         for batch, targets in tqdm(dataloader, desc='batches', leave=False):
             optimizer.zero_grad()
+            batch = batch.to(args.device)
+            targets = targets.to(args.device)
             batch = batch.permute(1, 0, 2)
             outputs = model(batch)
             loss = criterion(outputs, targets)

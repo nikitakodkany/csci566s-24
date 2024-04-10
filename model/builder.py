@@ -13,7 +13,8 @@ def create_preprocessing_model(
         twitter_embedding: str,
         twitter_sentiment: str,
         reddit_sentiment: str,
-        twitter_sector: str
+        twitter_sector: str,
+        device: str = "cpu"
 ):
     '''
     Initialize a DUNES model from a set of embeddings and sentiment models.
@@ -26,13 +27,13 @@ def create_preprocessing_model(
     '''
 
     # Load the models
-    twitter_embedding_model = SentenceTransformer(twitter_embedding)
+    twitter_embedding_model = SentenceTransformer(twitter_embedding).to(device)
     twitter_sentiment_tokenizer = AutoTokenizer.from_pretrained(twitter_sentiment)
-    twitter_sentiment_model = AutoModelForSequenceClassification.from_pretrained(twitter_sentiment)
+    twitter_sentiment_model = AutoModelForSequenceClassification.from_pretrained(twitter_sentiment).to(device)
     reddit_sentiment_tokenizer = AutoTokenizer.from_pretrained(reddit_sentiment)
-    reddit_sentiment_model = AutoModelForSequenceClassification.from_pretrained(reddit_sentiment)
+    reddit_sentiment_model = AutoModelForSequenceClassification.from_pretrained(reddit_sentiment).to(device)
     twitter_sector_tokenizer = AutoTokenizer.from_pretrained(twitter_sector)
-    twitter_sector_model = AutoModelForSequenceClassification.from_pretrained(twitter_sector)
+    twitter_sector_model = AutoModelForSequenceClassification.from_pretrained(twitter_sector).to(device)
 
     # Freeze the models
     twitter_sentiment_model.eval()
@@ -51,7 +52,7 @@ def create_preprocessing_model(
         reddit_sentiment_model, 
         twitter_sector_tokenizer, 
         twitter_sector_model
-        )
+        ).to(device)
 
     return model
 
@@ -70,7 +71,8 @@ def test():
         "mixedbread-ai/mxbai-embed-large-v1",
         "cardiffnlp/twitter-roberta-base-sentiment-latest",
         "bhadresh-savani/distilbert-base-uncased-emotion",
-        "cardiffnlp/tweet-topic-latest-multi"
+        "cardiffnlp/tweet-topic-latest-multi",
+        "cpu"
     )
 
     feature_size = preprocessing_model.feature_size
