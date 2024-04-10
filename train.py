@@ -119,12 +119,7 @@ def train_model(args, checkpoints_dir, output_dir):
     print("num_outputs:", args.num_outputs)
 
     model = DunesTransformerModel(
-        feature_sizes={
-            'tweet_embedding': preprocessing_model.feature_size['twitter_embedding'],  # Size of the tweet embeddings
-            'tweet_sentiment': preprocessing_model.feature_size['twitter_sentiment'],  # Size of the tweet sentiment vector
-            'reddit_sentiment': preprocessing_model.feature_size['reddit_sentiment'],  # Size of the Reddit sentiment vector
-            'tweet_sector': preprocessing_model.feature_size['twitter_sector'],  # Size of the tweet sector vector
-        },
+        feature_size=sum(preprocessing_model.feature_size.values()),
         d_model=args.d_model,  # Size of each projection layer
         nhead=args.num_heads,  # Number of attention heads in the transformer encoder
         num_encoder_layers=args.num_layers,  # Number of layers in the transformer encoder
@@ -145,8 +140,9 @@ def train_model(args, checkpoints_dir, output_dir):
         # Training phase
         model.train()  
         train_loss = 0.0
-        for batch in tqdm(dataloader, desc='Batches', leave=False):
+        for batch, targets in tqdm(dataloader, desc='batches', leave=False):
             optimizer.zero_grad()
+            batch = batch.permute(1, 0, 2)
             outputs = model(batch)
             loss = criterion(outputs, targets)
             train_loss += loss.item()

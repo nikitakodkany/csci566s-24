@@ -9,14 +9,14 @@ class DataLoaderDUNES(Dataset):
         self.preprocessing_model = preprocessing_model
         self.seq_len = seq_len
         self.stride = stride
-        self.numeric_features = 6
-        self.vector_size = sum(preprocessing_model.feature_size.values())+self.numeric_features
+        self.vector_size = sum(preprocessing_model.feature_size.values())
     
     def __len__(self):
         return max(0, ((len(self.data) - self.seq_len) // self.stride) + 1)
     
     def __getitem__(self, idx):
         seq_features = torch.zeros((self.seq_len, self.vector_size))
+        target_features = None
         start_idx = idx * self.stride
 
         for i in range(self.seq_len):
@@ -34,6 +34,7 @@ class DataLoaderDUNES(Dataset):
                     # Create a mask tensor with the appropriate length
                     mask_tensor = torch.zeros(self.vector_size - prev_tweet_embedding.size(0) - prev_tweet_sentiment.size(0))
                     all_features = torch.cat([prev_tweet_embedding, prev_tweet_sentiment, mask_tensor])
+                    target_features = torch.tensor([item['num_likes'], item['num_replies'], item['num_retweets']], dtype=torch.float).view(-1)
                 else:
                     prev_tweet_embedding, prev_tweet_sentiment, prev_reddit_sentiment,positive_reddit_sentiment,negative_reddit_sentiment, prev_tweet_sector = self.preprocessing_model(item['tweet_content'], item['title_submission'],item['positive_comments'],item['negative_comments'])
                     # Flatten and concatenate all features
@@ -59,7 +60,7 @@ class DataLoaderDUNES(Dataset):
                 
                 seq_features[i, :all_features.size(0)] = all_features
 
-        return seq_features.unsqueeze(0)
+        return seq_features, target_features
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout=0.1, max_len=5000):
@@ -78,10 +79,10 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class DunesTransformerModel(nn.Module):
-    def __init__(self, feature_sizes, d_model, nhead, num_encoder_layers, dim_feedforward, num_outputs):
+    def __init__(self, feature_size, d_model, nhead, num_encoder_layers, dim_feedforward, num_outputs):
         super(DunesTransformerModel, self).__init__()
         self.positional_encoder = PositionalEncoding(d_model)
-        self.fc1 = nn.Linear(sum(feature_sizes.values()), d_model)
+        self.fc1 = nn.Linear(feature_size, d_model)
         self.fc2 = nn.Linear(d_model, d_model)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
@@ -89,8 +90,8 @@ class DunesTransformerModel(nn.Module):
 
     def forward(self, features):
         # Concatenation of all features to create the input tensor
-        src = torch.cat([features[key] for key in features], dim=1)
-        src = self.fc1(src)
+        # src = torch.cat([features[key] for key in features], dim=1)
+        src = self.fc1(features)
         src = self.fc2(src)
         src = self.positional_encoder(src)
         

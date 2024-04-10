@@ -33,7 +33,8 @@ class PreDUNES(nn.Module):
             'twitter_embedding': twitter_embedding_model.get_sentence_embedding_dimension(),
             'twitter_sentiment': twitter_sentiment_model.config.num_labels,
             'reddit_sentiment': reddit_sentiment_model.config.num_labels*3,
-            'twitter_sector': twitter_sector_model.config.num_labels
+            'twitter_sector': twitter_sector_model.config.num_labels,
+            'numeric_features': 6
         }
         self.mappings = {
             'twitter_sentiment': twitter_sentiment_model.config.id2label,
