@@ -64,7 +64,7 @@ def parse_args():
     parser.add_argument('--device', type=str, default=None, help='GPU to use [default: none]')
     parser.add_argument('--optimizer', type=str, default='Adam', help='Adam or SGD [default: Adam]')
     parser.add_argument('--lr_step_size', type=int, default=1, help='Step size for learning rate scheduler [default: 1]')
-    parser.add_argument('--lr_gamma', type=float, default=0.1, help='Gamma for learning rate scheduler [default: 0.1]')
+    parser.add_argument('--lr_gamma', type=float, default=0.9, help='Gamma for learning rate scheduler [default: 0.1]')
     parser.add_argument('--log_dir', type=str, default=None, help='Log path [default: None]')
     parser.add_argument('--output_dir', type=str, default='output', help='Log path [default: None]')
     parser.add_argument('--data_path', type=str, default='dataset/elon_reddit_data.csv', help='Path to data file [default: dataset/elon_reddit_data.csv]')
@@ -140,6 +140,8 @@ def train_model(args, checkpoints_dir, output_dir):
     print("\nTraining Model")
     print("Epochs:", args.epoch)
     print("Learning Rate:", args.learning_rate)
+    print("Learning Rate Scheduler Step Size:", args.lr_step_size)
+    print("Learning Rate Scheduler Gamma:", args.lr_gamma)
     print("Optimizer:", args.optimizer)
 
     criterion = nn.MSELoss()
