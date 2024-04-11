@@ -165,6 +165,8 @@ def train_model(args, checkpoints_dir, output_dir):
             batch = batch.permute(1, 0, 2)
             outputs = model(batch)
             loss = criterion(outputs, targets)
+            outputs = outputs.cpu().detach().numpy()
+            targets = targets.cpu().detach().numpy()
             likes_mae += calculate_mean_absolute_error(outputs[:, 0], targets[:, 0])
             retweets_mae += calculate_mean_absolute_error(outputs[:, 1], targets[:, 1])
             replies_mae += calculate_mean_absolute_error(outputs[:, 2], targets[:, 2])
