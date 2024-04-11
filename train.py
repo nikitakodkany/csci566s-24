@@ -10,7 +10,7 @@ import torch
 from torch import nn
 from torch.optim import Adam
 
-from utils import reformat_dataset
+from utils import reformat_dataset, calculate_mean_absolute_error
 from model.builder import create_preprocessing_model
 from model.dunes import DataLoaderDUNES, DunesTransformerModel
 from torch.utils.data import DataLoader
@@ -106,9 +106,11 @@ def train_model(args, checkpoints_dir, output_dir):
     )
 
     print("\nLoading Data")
+    print("Data Path:", args.data_path)
     df = pd.read_csv(args.data_path)
     df[['num_likes', 'num_retweets', 'num_replies']] = scaler.fit_transform(df[['num_likes', 'num_retweets', 'num_replies']])
-    
+    print("Target Stats\n")
+    print(df[['num_likes', 'num_retweets', 'num_replies']].describe().loc[['mean', 'std', 'max', 'min']])
     data = reformat_dataset(df)
     dataset = DataLoaderDUNES(data, preprocessing_model, seq_len=args.seq_len, stride=args.stride)
     print("Data Loaded")
@@ -153,6 +155,9 @@ def train_model(args, checkpoints_dir, output_dir):
         # Training phase
         model.train()  
         train_loss = 0.0
+        likes_mae = 0.0
+        retweets_mae = 0.0
+        replies_mae = 0.0
         for batch, targets in tqdm(dataloader, desc='batches', leave=False):
             optimizer.zero_grad()
             batch = batch.to(args.device)
@@ -160,6 +165,9 @@ def train_model(args, checkpoints_dir, output_dir):
             batch = batch.permute(1, 0, 2)
             outputs = model(batch)
             loss = criterion(outputs, targets)
+            likes_mae += calculate_mean_absolute_error(outputs[:, 0], targets[:, 0])
+            retweets_mae += calculate_mean_absolute_error(outputs[:, 1], targets[:, 1])
+            replies_mae += calculate_mean_absolute_error(outputs[:, 2], targets[:, 2])
             train_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -173,10 +181,13 @@ def train_model(args, checkpoints_dir, output_dir):
                 "loss": loss,
                 "epoch": epoch,
                 "train_loss": avg_train_loss,
+                "likes_mae": likes_mae,
+                "retweets_mae": retweets_mae,
+                "replies_mae": replies_mae
                 },commit=True
             )
 
-        if epoch%10 == 0:
+        if epoch%4 == 0:
             model.eval()
             val_loss = 0.0
             for val_batch, val_target in val_dataloader:
@@ -196,6 +207,9 @@ def train_model(args, checkpoints_dir, output_dir):
                 wandb.log({
                     "val_loss": avg_val_loss,
                     "epoch": epoch,
+                    "likes_mae": likes_mae,
+                    "retweets_mae": retweets_mae,
+                    "replies_mae": replies_mae
                     },commit=True
                 )
         scheduler.step()
