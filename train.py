@@ -57,17 +57,19 @@ data = [
 def parse_args():
     parser = argparse.ArgumentParser('Model')
     parser.add_argument('--model', type=str, default='transformer', help='Model to train')
-    parser.add_argument("--run_name", type=str, default="train-model", help="used to name saving directory and wandb run")
+    parser.add_argument('--run_name', type=str, default="train-model", help="used to name saving directory and wandb run")
+    parser.add_argument('--device', type=str, default=None, help='GPU to use [default: none]')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch Size during training [default: 16]')
     parser.add_argument('--epoch', default=32, type=int, help='Epoch to run [default: 32]')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='Initial learning rate [default: 0.001]')
-    parser.add_argument('--device', type=str, default=None, help='GPU to use [default: none]')
     parser.add_argument('--optimizer', type=str, default='Adam', help='Adam or SGD [default: Adam]')
     parser.add_argument('--lr_step_size', type=int, default=1, help='Step size for learning rate scheduler [default: 1]')
-    parser.add_argument('--lr_gamma', type=float, default=0.9, help='Gamma for learning rate scheduler [default: 0.1]')
+    parser.add_argument('--lr_gamma', type=float, default=0.9, help='Gamma for learning rate scheduler [default: 0.9]')
     parser.add_argument('--log_dir', type=str, default=None, help='Log path [default: None]')
+
     parser.add_argument('--output_dir', type=str, default='output', help='Log path [default: None]')
     parser.add_argument('--data_path', type=str, default='dataset/elon_reddit_data.csv', help='Path to data file [default: dataset/elon_reddit_data.csv]')
+    parser.add_argument('--validation_split', type=float, default=0.2, help='Validation split [default: 0.1]')
 
     parser.add_argument('--tweet_embedding', type=str, default='mixedbread-ai/mxbai-embed-large-v1', help='Tweet embedding model')
     parser.add_argument('--tweet_sentiment', type=str, default='cardiffnlp/twitter-roberta-base-sentiment-latest', help='Tweet sentiment model')
@@ -112,14 +114,17 @@ def train_model(args, checkpoints_dir, output_dir):
     print("Target Stats\n")
     print(df[['num_likes', 'num_retweets', 'num_replies']].describe().loc[['mean', 'std', 'max', 'min']])
     data = reformat_dataset(df)
-    dataset = DataLoaderDUNES(data, preprocessing_model, seq_len=args.seq_len, stride=args.stride)
+    validation_split = int(args.validation_split * len(data))
+    dataset = DataLoaderDUNES(data[:-validation_split], preprocessing_model, seq_len=args.seq_len, stride=args.stride)
+    val_dataset = DataLoaderDUNES(data[-validation_split:], preprocessing_model, seq_len=args.seq_len, stride=args.stride)
     print("Data Loaded")
-    print("Data Length:", len(dataset))
+    print("Train Data Length:", len(dataset))
+    print("Validation Data Length:", len(val_dataset))
     print("Batch Size:", args.batch_size)
     print("Sequence Length:", args.seq_len)
     print("Stride:", args.stride)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
-    val_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
     print("\nInitializing DunesTransformerModel")
     print("Feature Sizes:", preprocessing_model.feature_size)
@@ -192,11 +197,19 @@ def train_model(args, checkpoints_dir, output_dir):
         if epoch%4 == 0:
             model.eval()
             val_loss = 0.0
+            val_likes_mae = 0.0
+            val_retweets_mae = 0.0
+            val_replies_mae = 0.0
             for val_batch, val_target in val_dataloader:
                 val_batch = val_batch.permute(1, 0, 2)
                 val_output = model(val_batch)
                 loss = criterion(val_output, val_target)
                 val_loss += loss.item()
+                val_output = val_output.cpu().detach().numpy()
+                val_target = val_target.cpu().detach().numpy()
+                val_likes_mae += calculate_mean_absolute_error(val_output[:, 0], val_target[:, 0])
+                val_retweets_mae += calculate_mean_absolute_error(val_output[:, 1], val_target[:, 1])
+                val_replies_mae += calculate_mean_absolute_error(val_output[:, 2], val_target[:, 2])
             avg_val_loss = val_loss / len(val_dataloader)
             print(f'\t\t Val Loss: {avg_val_loss:.4f}')
             
@@ -209,9 +222,9 @@ def train_model(args, checkpoints_dir, output_dir):
                 wandb.log({
                     "val_loss": avg_val_loss,
                     "epoch": epoch,
-                    "likes_mae": likes_mae,
-                    "retweets_mae": retweets_mae,
-                    "replies_mae": replies_mae
+                    "val_likes_mae": val_likes_mae,
+                    "val_retweets_mae": val_retweets_mae,
+                    "val_replies_mae": val_replies_mae
                     },commit=True
                 )
         scheduler.step()
@@ -263,5 +276,5 @@ if __name__ == '__main__':
 
 '''
 test command
-python train.py --model transformer --run_name train-model --batch_size 2 --epoch 32 --learning_rate 0.001 --device cpu --optimizer Adam --log_dir None --output_dir output --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 10 --stride 2 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
+python train.py --model transformer --run_name train-model --batch_size 2 --epoch 32 --learning_rate 0.001 --optimizer Adam --lr_step_size 1 --lr_gamma 0.9 --log_dir None --output_dir output --data_path dataset/elon_reddit_data.csv --validation_split 0.1 --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 10 --stride 2 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
 '''
