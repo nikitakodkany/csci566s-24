@@ -10,7 +10,7 @@ import torch
 from torch import nn
 from torch.optim import Adam
 
-from utils import reformat_dataset, calculate_mean_absolute_error
+from utils import reformat_dataset, calculate_mean_absolute_error, quantile_loss
 from model.builder import create_preprocessing_model
 from model.dunes import DataLoaderDUNES, DunesTransformerModel
 from torch.utils.data import DataLoader
@@ -64,7 +64,8 @@ def parse_args():
     parser.add_argument('--learning_rate', default=0.001, type=float, help='Initial learning rate [default: 0.001]')
     parser.add_argument('--optimizer', type=str, default='Adam', help='Adam or SGD [default: Adam]')
     parser.add_argument('--lr_step_size', type=int, default=1, help='Step size for learning rate scheduler [default: 1]')
-    parser.add_argument('--lr_gamma', type=float, default=0.9, help='Gamma for learning rate scheduler [default: 0.9]')
+    parser.add_argument('--lr_gamma', type=float, default=0.9, help='Gamma for learning rate xscheduler [default: 0.9]')
+    parser.add_argument('--loss', type=str, default='mse', help='Loss function [default: mse]. Options: mse, mae, huber, quantile')
     parser.add_argument('--log_dir', type=str, default=None, help='Log path [default: None]')
 
     parser.add_argument('--output_dir', type=str, default='output', help='Log path [default: None]')
@@ -150,8 +151,13 @@ def train_model(args, checkpoints_dir, output_dir):
     print("Learning Rate Scheduler Step Size:", args.lr_step_size)
     print("Learning Rate Scheduler Gamma:", args.lr_gamma)
     print("Optimizer:", args.optimizer)
+    print("Loss Function:", args.loss, "loss")
 
-    criterion = nn.MSELoss()
+    if args.loss == 'mae': criterion = nn.L1Loss()
+    elif args.loss == 'huber': criterion = nn.SmoothL1Loss()
+    elif args.loss == 'quantile': criterion = quantile_loss
+    else: criterion = nn.MSELoss()
+
     optimizer = Adam(model.parameters(), lr=args.learning_rate)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
     num_epochs = args.epoch
@@ -276,5 +282,5 @@ if __name__ == '__main__':
 
 '''
 test command
-python train.py --model transformer --run_name train-model --batch_size 2 --epoch 32 --learning_rate 0.001 --optimizer Adam --lr_step_size 1 --lr_gamma 0.9 --log_dir None --output_dir output --data_path dataset/elon_reddit_data.csv --validation_split 0.1 --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 10 --stride 2 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
+python train.py --model transformer --run_name train-model --batch_size 32 --epoch 32 --learning_rate 0.001 --optimizer Adam --lr_step_size 1 --lr_gamma 0.9 --loss huber --log_dir None --output_dir output --data_path dataset/elon_reddit_data.csv --validation_split 0.1 --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 10 --stride 2 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
 '''

@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 def reformat_dataset(data):
     """
@@ -33,3 +34,8 @@ def calculate_mean_absolute_error(predictions, targets):
     Calculate the mean absolute error for the target variables
     """
     return np.mean(np.abs(predictions - targets))
+
+def quantile_loss(preds, targets, quantile=0.5):
+    assert 0 < quantile < 1, "Quantile should be in (0, 1)"
+    errors = targets - preds
+    return torch.max((quantile - 1) * errors, quantile * errors).mean()
