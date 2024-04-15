@@ -4,6 +4,7 @@ import datetime
 from pathlib import Path
 from tqdm import tqdm
 import pandas as pd
+import numpy as np
 import wandb
 
 import torch
@@ -70,6 +71,7 @@ def parse_args():
 
     parser.add_argument('--output_dir', type=str, default='output', help='Log path [default: None]')
     parser.add_argument('--data_path', type=str, default='dataset/elon_reddit_data.csv', help='Path to data file [default: dataset/elon_reddit_data.csv]')
+    parser.add_argument('--logarithmic', default=False, help='Logarithmic scale for target values [default: False]', action='store_true')
     parser.add_argument('--validation_split', type=float, default=0.2, help='Validation split [default: 0.1]')
 
     parser.add_argument('--tweet_embedding', type=str, default='mixedbread-ai/mxbai-embed-large-v1', help='Tweet embedding model')
@@ -111,7 +113,10 @@ def train_model(args, checkpoints_dir, output_dir):
     print("\nLoading Data")
     print("Data Path:", args.data_path)
     df = pd.read_csv(args.data_path)
-    df[['num_likes', 'num_retweets', 'num_replies']] = scaler.fit_transform(df[['num_likes', 'num_retweets', 'num_replies']])
+    if args.logarithmic:
+        df[['num_likes', 'num_retweets', 'num_replies']] = np.log1p(df[['num_likes', 'num_retweets', 'num_replies']])
+    else:
+        df[['num_likes', 'num_retweets', 'num_replies']] = scaler.fit_transform(df[['num_likes', 'num_retweets', 'num_replies']])
     print("Target Stats\n")
     print(df[['num_likes', 'num_retweets', 'num_replies']].describe().loc[['mean', 'std', 'max', 'min']])
     data = reformat_dataset(df)
@@ -282,5 +287,5 @@ if __name__ == '__main__':
 
 '''
 test command
-python train.py --model transformer --run_name train-model --batch_size 32 --epoch 32 --learning_rate 0.001 --optimizer Adam --lr_step_size 1 --lr_gamma 0.9 --loss huber --log_dir None --output_dir output --data_path dataset/elon_reddit_data.csv --validation_split 0.1 --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 10 --stride 2 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
+python train.py --model transformer --run_name train-model --batch_size 32 --epoch 32 --learning_rate 0.001 --optimizer Adam --lr_step_size 1 --lr_gamma 0.9 --loss huber --log_dir None --output_dir output --data_path dataset/elon_reddit_data.csv --logarithmic --validation_split 0.1 --tweet_embedding mixedbread-ai/mxbai-embed-large-v1 --tweet_sentiment cardiffnlp/twitter-roberta-base-sentiment-latest --reddit_sentiment bhadresh-savani/distilbert-base-uncased-emotion --tweet_sector cardiffnlp/tweet-topic-latest-multi --seq_len 10 --stride 2 --num_heads 8 --num_layers 3 --d_model 1024 --dim_feedforward 2048 --num_outputs 3 --report_to_wandb --wandb_project dunes --wandb_entity pavuskarmihir --save_checkpoints_to_wandb
 '''
