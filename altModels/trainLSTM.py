@@ -1,4 +1,5 @@
-import torch
+import torch 
+import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from model.builder import create_preprocessing_model
@@ -27,7 +28,14 @@ dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
 # Example training loop
 optimizer = torch.optim.Adam(lstm_model.parameters(), lr=0.001)
-criterion = nn.MSELoss()  # Assuming regression type outputs
+# criterion = nn.MSELoss()  # Assuming regression type outputs
+
+# Calculate weights inversely proportional to class frequencies
+class_counts = [num_majority_class_samples, num_minority_class_samples]
+weights = torch.tensor([1.0 / x for x in class_counts], dtype=torch.float32).to(device)
+
+# Use weighted loss in your training loop
+criterion = nn.CrossEntropyLoss(weight=weights)
 
 lstm_model.train()  # Set the model to training mode
 for epoch in range(num_epochs):
