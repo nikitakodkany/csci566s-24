@@ -7,6 +7,15 @@ from model.dunes import DataLoaderDUNES, LSTMModel
 
 # LSTMModel and DataLoaderDUNES are imported
 
+class WeightedMSELoss(nn.Module):
+    def __init__(self, weights):
+        super(WeightedMSELoss, self).__init__()
+        self.weights = weights  # A tensor of weights for each sample
+
+    def forward(self, input, target):
+        return ((input - target) ** 2 * self.weights).mean()
+
+
 # Parameters for the LSTM model
 input_size = 512  # Should be equal to self.vector_size in DataLoaderDUNES
 hidden_size = 256
