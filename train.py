@@ -167,6 +167,22 @@ def train_model(args, checkpoints_dir, output_dir):
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
     num_epochs = args.epoch
 
+    hyperparameters = {
+        "model": args.model,
+        "d_model": args.d_model,
+        "nhead": args.num_heads,
+        "num_encoder_layers": args.num_layers,
+        "dim_feedforward": args.dim_feedforward,
+        "num_outputs": args.num_outputs,
+        "logarithmic": args.logarithmic,
+        "seq_len": args.seq_len,
+        "stride": args.stride,
+        "tweet_embedding": args.tweet_embedding,
+        "tweet_sentiment": args.tweet_sentiment,
+        "reddit_sentiment": args.reddit_sentiment,
+        "tweet_sector": args.tweet_sector,
+    }
+
     for epoch in range(num_epochs):
         # Training phase
         model.train()  
@@ -225,7 +241,10 @@ def train_model(args, checkpoints_dir, output_dir):
             print(f'\t\t Val Loss: {avg_val_loss:.4f}')
             
             save_path = Path.joinpath(checkpoints_dir, f'weights_{epoch}.pt')
-            torch.save(model.state_dict(), save_path)
+            torch.save({
+                "hyperparameters": hyperparameters,
+                "state_dict": model.state_dict()}, save_path
+            )
             
             if args.report_to_wandb and args.save_checkpoints_to_wandb:
                 wandb.save(save_path)
@@ -244,7 +263,10 @@ def train_model(args, checkpoints_dir, output_dir):
 
     model.eval()
     save_path = Path.joinpath(output_dir, 'final_model.pt')
-    torch.save(model.state_dict(), save_path)
+    torch.save({
+        "hyperparameters": hyperparameters,
+        "state_dict": model.state_dict()}, save_path
+    )
     print(f"Model saved to {save_path}")
     if args.report_to_wandb and args.save_checkpoints_to_wandb:
         wandb.save(save_path)
