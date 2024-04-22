@@ -14,7 +14,6 @@ from torch.optim import Adam
 from utils import reformat_dataset, calculate_mean_absolute_error, quantile_loss
 from model.builder import create_preprocessing_model
 from model.dunes import DataLoaderDUNES, DunesTransformerModel
-from model.lstm import LSTMModel
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import RobustScaler
 
@@ -142,22 +141,14 @@ def train_model(args, checkpoints_dir, output_dir):
     print("dim_feedforward:", args.dim_feedforward)
     print("num_outputs:", args.num_outputs)
 
-    if( args.model == 'transformer'):
-        model = DunesTransformerModel(
-            feature_size=sum(preprocessing_model.feature_size.values()),
-            d_model=args.d_model,  # Size of each projection layer
-            nhead=args.num_heads,  # Number of attention heads in the transformer encoder
-            num_encoder_layers=args.num_layers,  # Number of layers in the transformer encoder
-            dim_feedforward=args.dim_feedforward,  # Size of the feedforward network model in transformer encoder
-            num_outputs=args.num_outputs  # Number of output values (e.g., predicting engagement metrics)
-        ).to(args.device)
-    elif( args.model == 'lstm'):
-        model = LSTMModel(
-            input_size=sum(preprocessing_model.feature_size.values()),
-            hidden_size=args.d_model,
-            num_layers=args.num_layers,
-            num_outputs=args.num_outputs
-        ).to(args.device)
+    model = DunesTransformerModel(
+        feature_size=sum(preprocessing_model.feature_size.values()),
+        d_model=args.d_model,  # Size of each projection layer
+        nhead=args.num_heads,  # Number of attention heads in the transformer encoder
+        num_encoder_layers=args.num_layers,  # Number of layers in the transformer encoder
+        dim_feedforward=args.dim_feedforward,  # Size of the feedforward network model in transformer encoder
+        num_outputs=args.num_outputs  # Number of output values (e.g., predicting engagement metrics)
+    ).to(args.device)
 
     print("\nTraining Model")
     print("Epochs:", args.epoch)
@@ -187,7 +178,7 @@ def train_model(args, checkpoints_dir, output_dir):
             optimizer.zero_grad()
             batch = batch.to(args.device)
             targets = targets.to(args.device)
-            if args.model == 'transformer': batch = batch.permute(1, 0, 2)
+            batch = batch.permute(1, 0, 2)
             outputs = model(batch)
             loss = criterion(outputs, targets)
             outputs = outputs.cpu().detach().numpy()
