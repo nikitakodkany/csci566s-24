@@ -66,6 +66,6 @@ def combine(df):
     columns_to_clean = ['tweet_content', 'title_submission', 'positive_comments', 'negative_comments']
     df[columns_to_clean] = df[columns_to_clean].applymap(remove_special_characters)
 
-    df.to_csv(r"data/COMBINED_FINAL.csv", index=False)
+    df.to_csv(r"dataset/elon_twitter_data_v3.csv", index=False)
 
 combine(df)
