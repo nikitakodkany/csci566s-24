@@ -113,6 +113,7 @@ def train_model(args, checkpoints_dir, output_dir):
     print("\nLoading Data")
     print("Data Path:", args.data_path)
     df = pd.read_csv(args.data_path)
+    print("Scaling:", "logarithmic" if args.logarithmic else "robust")
     if args.logarithmic:
         df[['num_likes', 'num_retweets', 'num_replies']] = np.log1p(df[['num_likes', 'num_retweets', 'num_replies']])
     else:
