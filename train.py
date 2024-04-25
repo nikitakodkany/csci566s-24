@@ -238,7 +238,7 @@ def train_model(args, checkpoints_dir, output_dir):
             val_retweets_mae = 0.0
             val_replies_mae = 0.0
             for val_batch, val_target in val_dataloader:
-                val_batch = val_batch.permute(1, 0, 2)
+                if args.model == 'transformer': val_batch = val_batch.permute(1, 0, 2)
                 val_output = model(val_batch)
                 loss = criterion(val_output, val_target)
                 val_loss += loss.item()
