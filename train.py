@@ -15,6 +15,7 @@ from utils import reformat_dataset, calculate_mean_absolute_error, quantile_loss
 from model.builder import create_preprocessing_model
 from model.dunes import DataLoaderDUNES, DunesTransformerModel
 from model.lstm import LSTMModel
+from model.mlp import MLPModel
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import RobustScaler
 
@@ -123,6 +124,9 @@ def train_model(args, checkpoints_dir, output_dir):
     print(df[['num_likes', 'num_retweets', 'num_replies']].describe().loc[['mean', 'std', 'max', 'min']])
     data = reformat_dataset(df)
     validation_split = int(args.validation_split * len(data))
+    if args.model == 'mlp':
+        args.seq_len = 1
+        args.stride = 1
     dataset = DataLoaderDUNES(data[:-validation_split], preprocessing_model, seq_len=args.seq_len, stride=args.stride)
     val_dataset = DataLoaderDUNES(data[-validation_split:], preprocessing_model, seq_len=args.seq_len, stride=args.stride)
     print("Data Loaded")
@@ -159,6 +163,14 @@ def train_model(args, checkpoints_dir, output_dir):
             num_layers=args.num_layers,
             num_outputs=args.num_outputs
         ).to(args.device)
+    elif( args.model == 'mlp'):
+        model = MLPModel(
+            input_size=sum(preprocessing_model.feature_size.values()),
+            hidden_size=args.d_model,
+            num_layers=args.num_layers,
+            num_outputs=args.num_outputs
+        ).to(args.device)
+    print(model)
 
     print("\nTraining Model")
     print("Epochs:", args.epoch)
@@ -205,6 +217,7 @@ def train_model(args, checkpoints_dir, output_dir):
             batch = batch.to(args.device)
             targets = targets.to(args.device)
             if args.model == 'transformer': batch = batch.permute(1, 0, 2)
+            if args.model == 'mlp': batch = batch.view(batch.size(0), -1)
             outputs = model(batch)
             loss = criterion(outputs, targets)
             outputs = outputs.cpu().detach().numpy()
@@ -239,6 +252,7 @@ def train_model(args, checkpoints_dir, output_dir):
             val_replies_mae = 0.0
             for val_batch, val_target in val_dataloader:
                 if args.model == 'transformer': val_batch = val_batch.permute(1, 0, 2)
+                if args.model == 'mlp': val_batch = val_batch.view(val_batch.size(0), -1)
                 val_output = model(val_batch)
                 loss = criterion(val_output, val_target)
                 val_loss += loss.item()
