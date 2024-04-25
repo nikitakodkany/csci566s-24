@@ -82,19 +82,28 @@ class PositionalEncoding(nn.Module):
 class DunesTransformerModel(nn.Module):
     def __init__(self, feature_size, d_model, nhead, num_encoder_layers, dim_feedforward, num_outputs):
         super(DunesTransformerModel, self).__init__()
-        self.positional_encoder = PositionalEncoding(d_model)
-        self.fc1 = nn.Linear(feature_size, d_model)
-        self.fc2 = nn.Linear(d_model, d_model)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward)
+        self.d_model = d_model
+        if d_model == -1: 
+            self.positional_encoder = PositionalEncoding(feature_size)
+            encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=nhead, dim_feedforward=dim_feedforward)
+            self.output_linear = nn.Linear(feature_size, num_outputs)
+        else: 
+            self.positional_encoder = PositionalEncoding(d_model)
+            self.fc1 = nn.Linear(feature_size, d_model)
+            self.fc2 = nn.Linear(d_model, d_model)
+            encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward)
+            self.output_linear = nn.Linear(d_model, num_outputs)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
-        self.output_linear = nn.Linear(d_model, num_outputs)
 
     def forward(self, features):
         # Concatenation of all features to create the input tensor
         # src = torch.cat([features[key] for key in features], dim=1)
-        src = self.fc1(features)
-        src = self.fc2(src)
-        src = self.positional_encoder(src)
+        if self.d_model == -1:
+            src = self.positional_encoder(features)
+        else:
+            src = self.fc1(features)
+            src = self.fc2(src)
+            src = self.positional_encoder(src)
         
         # Transformer encoding and output processing remain unchanged
         output = self.transformer_encoder(src)
